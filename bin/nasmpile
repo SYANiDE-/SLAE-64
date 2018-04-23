@@ -1,0 +1,69 @@
+#!/bin/bash
+
+NARGS=$#
+dbg=""
+dt=""
+compiler_opts=""
+linker_opts=""
+clean=0		#default
+linker="ld"	#default
+arch=""
+nasm_arch=""
+helptext='''[!] USAGE: '''"$0"'''  [.nasm file]  -{o|O|g|ll|lg|s}
+
+Opts:
+	-o [?]	Compiler options. Where [?] is a quoted list of raw opts to pass.
+	-O [?]	Linker options.  Where [?] is a quoted list of raw opts to pass.
+	-g	Sets add-debug-symbols mode = 1 on NASM op.
+	-ll	Set linker to ld  [default]
+	-lg	Set linker to gcc
+	-s	Set output debug symbols to .dbg file and strip binary
+	-h	Usage and help
+	-x86	Force 32-bit linker on 64-bit machine
+	--help	Usage and help
+'''
+
+
+if [[ $(uname -m) == 'x86_64' ]]; then
+	nasm_arch='-f elf64'
+else
+	nasm_arch='-f elf32'
+fi
+
+
+if [[ $NARGS -lt 1 ]]; then echo -e "$helptext"; exit 1; else node=${1%.*}; fi
+function tab(){ printf "[.] %13s: %25s --> %-25s " $1 $2 $3 ; }
+
+while [[ $# -gt 0 ]];
+do
+	opt="$1";
+	shift;
+	case "$opt" in
+		'-o') compiler_opts="$1";;
+		'-O') linker_opts="$1";;
+		'-g') dbg='-g'; dt='w/debug';;
+		'-ll') linker="ld";;
+		'-lg') linker="gcc";;
+		'-s') clean=1;;
+		'-x86') arch="-m elf_i386";nasm_arch='-felf32';;
+		'-h'|'--help') echo "$helptext"; exit 1;;
+esac
+done
+
+
+
+echo -ne "Compiler opts = \"$compiler_opts\"\nLinker_opts = \"$linker_opts\"\nLinker = \"$linker\"\ncompiler_arch = \"$nasm_arch\"\n\n"
+if [[ "$dbg" == '-g' ]]; then echo "[!] $dt"; fi
+tab "Assembling" "$node.nasm" "$node.o"
+nasm $nasm_arch $node.nasm -o $node.o $dbg $compiler_opts && echo -e "... Done!"
+tab "Linking" "$node.o" "$node.elf"
+$linker $node.o -o $node.elf $linker_opts $arch && echo -e "... Done!"
+
+if [[ "$dbg" == '-g' ]] && [[ "$clean" -eq 1 ]]; then
+	tab 'Debug_symbols' "$node.elf" "$node.dbg"
+	objcopy --only-keep-debug $node.elf $node.dbg && chmod -x $node.dbg && echo "... Done!"
+	tab 'Strip_Debug' "$node.elf" "-$node.elf"
+	strip --strip-debug --strip-unneeded $node.elf && echo "... Done!"
+fi
+
+
