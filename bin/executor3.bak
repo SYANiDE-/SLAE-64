@@ -35,22 +35,15 @@ main(int argc, char **argv){
 	strcpy(shellcode, convarg);
 	printf("%s\n%s\n%d bytes\n", argv[1], shellcode, (int) strlen(shellcode));
 
-	asm (
-		"movq $0xffffffffffffffff, %rax\n\t"
-		"push %rax\n\t"
-		"push %rax\n\t"
-		"push %rax\n\t"
-		"push %rax\n\t"
-		"push %rax\n\t"
-		"push %rax\n\t"
-		"pop %rbx\n\t"
-		"pop %rcx\n\t"
-		"pop %rdx\n\t"
-		"pop %rsi\n\t"
-		"pop %rdi\n\t"
-		"pop %rbp\n\t"
+	__asm__ ("movl $0xffffffff, %eax\n\t"
+		 "movl %eax, %ebx\n\t"
+		 "movl %eax, %ecx\n\t"
+		 "movl %eax, %edx\n\t"
+		 "movl %eax, %esi\n\t"
+		 "movl %eax, %edi\n\t"
+		 "movl %eax, %ebp\n\t"
 
-		// call shellcode
-		"call shellcode");		
+		 // Calling the shellcode
+		 "call shellcode");
 }
 
