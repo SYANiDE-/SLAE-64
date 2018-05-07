@@ -1,10 +1,15 @@
 #!/usr/bin/env python2
-import sys, os, argparse, random, string
+import sys, os, argparse, random, string, platform
 # Multiple encoder formats supported!
 
 class encoder():
 	def __init__(s):
+		s.arch = platform.architecture()[0]
+		s.ARCHES = { '32bit': s.write_decode_stub_nasm, 
+			     '64bit': s.write_decode_stub_nasm_64 }
 		s.args = s.getargs()
+		if s.args.x86 == True:
+			s.arch = '32bit'
 		s.nullbyte_in =""
 		s.nullbyte_out =""
 		s.xor = s.args.xor
@@ -46,6 +51,8 @@ class encoder():
 			help="Write nasm decoder stub script based on chosen encoding method, to OUTFILE")
 		ap.add_argument("-c", '--compiler', action="store_true", default=None, 
 			help="com(nasm)pile decoder stub script and objdump {.elf} | reformat_od.sh (REQUIRES -o)")
+		ap.add_argument("-X", '--x86', action="store_true", default=None, 
+			help="Explicitly compile as 32bit on 64bit system")
 		args, l = ap.parse_known_args()
 		if all(value is None for value in vars(args).values()):
 			ap.print_help()
@@ -112,24 +119,24 @@ class encoder():
 		rl = []
 		rl = [ s.rand_label() for x in range(0, 4) ]	
 		s.output = """\
-section .text
-global _start
-_start:
-	jmp short %s
-%s:
-	pop esi
-	xor ecx, ecx
-	mov cl, %d
-	%s
-%s:
-	%s
-	inc esi
-	loop %s
-	jmp short %s
-%s:
-	call %s
-	%s: 		db	%s
-""" % (rl[0], rl[1], s.s_len, setup, rl[2], dec_method, rl[2], rl[3],rl[0], rl[1], rl[3], s.z_style)
+			section .text
+			global _start
+			_start:
+				jmp short %s
+			%s:
+				pop esi
+				xor ecx, ecx
+				mov cl, %d
+				%s
+			%s:
+				%s
+				inc esi
+				loop %s
+				jmp short %s
+			%s:
+				call %s
+				%s: 		db	%s
+			""" % (rl[0], rl[1], s.s_len, setup, rl[2], dec_method, rl[2], rl[3],rl[0], rl[1], rl[3], s.z_style)
 		FILE = s.outfile
 		if not ".nasm" in FILE:
 			FILE += ".nasm"
@@ -144,6 +151,39 @@ _start:
 		return "".join(random.choice(string.ascii_letters) for x in range(random.randrange(6,24))) 
 
 
+	def write_decode_stub_nasm_64(s, dec_method, setup=""):
+		rl = []
+		rl = [ s.rand_label() for x in range(0, 4) ]	
+		s.output = """\
+			section .text
+			global _start
+			_start:
+				jmp short %s
+			%s:
+				pop rsi
+				xor rcx, rcx
+				mov cl, %d
+				%s
+			%s:
+				%s
+				inc rsi
+				loop %s
+				jmp short %s
+			%s:
+				call %s
+				%s: 		db	%s
+			""" % (rl[0], rl[1], s.s_len, setup, rl[2], dec_method, rl[2], rl[3],rl[0], rl[1], rl[3], s.z_style)
+		FILE = s.outfile
+		if not ".nasm" in FILE:
+			FILE += ".nasm"
+		with open(FILE, 'w') as F:
+			for line in s.output:
+				F.write(line)
+		s.outfile = FILE
+		F.close()
+
+
+
 	def encode(s):
 		if s.xor and s.encbyte:
 			s.xor_encode(s.shellcode, s.encbyte)
@@ -155,23 +195,31 @@ _start:
 
 	def writer(s):
 		if s.xor and s.encbyte:
-			method = "xor byte [esi], 0x%02x" % int(s.encbyte.encode('hex'), 16)
-			s.write_decode_stub_nasm(method)
+			if s.arch == '32bit':
+				method = "xor byte [esi], 0x%02x" % int(s.encbyte.encode('hex'), 16)
+			else:
+				method = "xor byte [rsi], 0x%02x" % int(s.encbyte.encode('hex'), 16)
+			s.ARCHES[s.arch](method)
 		if s.NOT:
-			method = "not byte [esi]"
-			s.write_decode_stub_nasm(method)
+			if s.arch == '32bit':
+				method = "not byte [esi]"
+			else:
+				method = "not byte [rsi]"
+			s.ARCHES[s.arch](method)
 		if s.insert:
-			start = "lea edi, [esi]\n\txor eax,eax\n\txor ebx,ebx\n\t"
-			method = "mov bl, byte [edi + eax]\n\tmov byte [esi], bl\n\tadd al, 2"
-			s.write_decode_stub_nasm(dec_method=method, setup=start)
+			if s.arch == '32bit':
+				start = "lea edi, [esi]\n\txor eax,eax\n\txor ebx,ebx\n\t"
+				method = "mov bl, byte [edi + eax]\n\tmov byte [esi], bl\n\tadd al, 2"
+			else:
+				start = "lea rdi, [rsi]\n\txor rax,rax\n\txor rbx,rbx\n\t"
+				method = "mov bl, byte [rdi + rax]\n\tmov byte [rsi], bl\n\tadd al, 2"
+			s.ARCHES[s.arch](dec_method=method, setup=start)
 
 
 	def printer(s):
 		print("")
 		print("[#] Used bytes:\n%s\n" % ",".join(s.used_bytes))
 		print("[#] C-style encoded:\n\"%s\"\n" % s.c_style)
-		print("[#] Zero-style encoded:\n%s\n" % s.z_style)	
-		print("[#] shellcode strlen %d bytes (0x%x)" % (s.s_len, s.s_len))
 		if s.insert:
 			print("[#] encoded strlen %d bytes (0x%x)" % (s.s_len*2, s.s_len*2))
 		if s.outfile:
@@ -186,9 +234,10 @@ _start:
 
 
 	def nasmpile_dump(s):
+		args = ' -g -s -x86' if s.arch == '32bit' else '-g -s'
 		if s.outfile and s.compiler:
 			try:
-				print(os.system('nasmpile '  +s.outfile+  " -g -s"))
+				print(os.system('nasmpile '  +s.outfile+  args))
 				print(os.system("objdump -M intel -d " 
 					+str(s.outfile).replace(".nasm", ".elf")+  "| reformat_od.sh"))
 			except Exception, X:
