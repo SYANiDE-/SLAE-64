@@ -27,5 +27,5 @@ cp1:
 
 getstr:
 	call cp1
-	prog: 	db	'/bin/bashABBBBBBBBCCCCCCCCDDDDDDDDEEEEEEEE-cFfor i in $(seq 1 30); do echo "[$i] Hello World!"; done', 0x00
+	prog: 	db	'/bin/bashABBBBBBBBCCCCCCCCDDDDDDDDEEEEEEEE-cFfor i in $(seq 0 30); do echo "[$i] Hello World!"; done', 0x00
 
