@@ -53,6 +53,8 @@ class encoder():
 			help="com(nasm)pile decoder stub script and objdump {.elf} | reformat_od.sh (REQUIRES -o)")
 		ap.add_argument("-X", '--x86', action="store_true", default=None, 
 			help="Explicitly compile as 32bit on 64bit system")
+		ap.add_argument("-s", '--sconly', action="store_true", default=None, 
+			help="output encoded shellcode only")
 		args, l = ap.parse_known_args()
 		if all(value is None for value in vars(args).values()):
 			ap.print_help()
@@ -72,8 +74,9 @@ class encoder():
 	def possible_encoder_bytes(s):
 		potential_bytes = [x for x in s.all_bytes if x not in s.used_bytes]
 		potential_byte_len = len(potential_bytes)
-		print("[#] Potential encoder bytes:\n%s" % ",".join(potential_bytes))
-		print("[#] %d possible bytes / (\\x01 - \\xff)" % potential_byte_len)
+		if not s.args.sconly == True:
+			print("[#] Potential encoder bytes:\n%s" % ",".join(potential_bytes))
+			print("[#] %d possible bytes / (\\x01 - \\xff)" % potential_byte_len)
 
 
 	def xor_encode(s, param, a):
@@ -217,29 +220,44 @@ class encoder():
 
 
 	def printer(s):
-		print("")
-		print("[#] Used bytes:\n%s\n" % ",".join(s.used_bytes))
-		print("[#] C-style encoded:\n\"%s\"\n" % s.c_style)
-		if s.insert:
-			print("[#] encoded strlen %d bytes (0x%x)" % (s.s_len*2, s.s_len*2))
+		if s.args.sconly == True:
+			if not s.compiler == True and not s.outfile:
+				os.system(">&2 echo \"[!] Encoded shellcode (needs decoder stub):\" ")
+				print(s.c_style)	
+		if not s.args.sconly:
+			print("")
+			print("[#] Used bytes:\n%s\n" % ",".join(s.used_bytes))
+			print("[#] C-style encoded:\n\"%s\"\n" % s.c_style)
+			print("[#] z-style encoded:\n%s\n" % s.z_style)
+			if s.insert:
+				print("[#] encoded strlen %d bytes (0x%x)" % (s.s_len*2, s.s_len*2))
 		if s.outfile:
 			s.writer()
-			print("[!] Wrote to outfile %s:\n%s" % (s.outfile, s.output))
-		if s.nullbyte_in:
-			print("\n[!] [!] [!] NULL BYTES.detected in input! [!] [!] [!]\n")
-		if s.nullbyte_out:
-			print("\n[!] [!] [!] NULL BYTES.detected in output! [!] [!] [!]\n")
-		if len(s.poten_used_bad) > 0:
-			print("\n[!] WARN: Possible bad bytes in input!\n%s\n" % ','.join(s.poten_used_bad))
+			if not s.args.sconly:
+				print("[!] Wrote to outfile %s:\n%s" % (s.outfile, s.output))
+		if not s.args.sconly:
+			if s.nullbyte_in:
+				print("\n[!] [!] [!] NULL BYTES.detected in input! [!] [!] [!]\n")
+			if s.nullbyte_out:
+				print("\n[!] [!] [!] NULL BYTES.detected in output! [!] [!] [!]\n")
+			if len(s.poten_used_bad) > 0:
+				print("\n[!] WARN: Possible bad bytes in input!\n%s\n" % ','.join(s.poten_used_bad))
 
 
 	def nasmpile_dump(s):
 		args = ' -g -s -x86' if s.arch == '32bit' else '-g -s'
 		if s.outfile and s.compiler:
 			try:
-				print(os.system('nasmpile '  +s.outfile+  args))
-				print(os.system("objdump -M intel -d " 
-					+str(s.outfile).replace(".nasm", ".elf")+  "| reformat_od.sh"))
+				if s.args.sconly == True:
+					os.system('nasmpile '  +s.outfile+  args+ " >/dev/null 2>&1")
+					os.system(">&2 echo \"[!] Encoded + decoder stub:\" ")
+					print(os.system("objdump -M intel -d " 
+						+str(s.outfile).replace(".nasm", ".elf")+  "| reformat_od.sh -o"))
+
+				else:
+					print(os.system('nasmpile '  +s.outfile+  args))
+					print(os.system("objdump -M intel -d " 
+						+str(s.outfile).replace(".nasm", ".elf")+  "| reformat_od.sh"))
 			except Exception, X:
 				print(str(X))
 
