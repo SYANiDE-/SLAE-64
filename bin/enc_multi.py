@@ -229,7 +229,7 @@ class encoder():
 			print("[#] Used bytes:\n%s\n" % ",".join(s.used_bytes))
 			print("[#] C-style encoded:\n\"%s\"\n" % s.c_style)
 			print("[#] z-style encoded:\n%s\n" % s.z_style)
-			print("[#] encoded strlen %d bytes (0x%x)" % (s.s_len, s.s_len))
+			print("[#] encoded strlen %d bytes (0x%x)" % (len(s.c_style)/4, len(s.c_style)/4))
 		if s.outfile:
 			s.writer()
 			if not s.args.sconly:
