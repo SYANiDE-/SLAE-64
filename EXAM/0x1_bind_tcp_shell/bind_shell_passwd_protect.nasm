@@ -38,7 +38,7 @@ _start:
 
 
 	;  socket(AF_INET, SOCK_STREAM, 0)
-	xor rbx, rbx+
+	xor rbx, rbx
 	; port needs to be in network byte order
 	; python -c  "import socket; hex(socket.htons(6624))"
 	; GIVES:  0xe019, which is good for octal input in NASM file.
