@@ -1,0 +1,6 @@
+break *main+195
+run $SC
+stepi
+break *shellcode+37 if $rcx == 0x0
+step
+x/27xb $rdi

