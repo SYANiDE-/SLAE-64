@@ -1,0 +1,15 @@
+define hook-stop
+print/x $rax
+print/x $rbx
+print/x $rcx
+print/x $rdx
+print/x $rdi
+print/x $rsi
+print $eflags
+disassemble $rip, +10
+x/12xg $rsp
+end
+break *main+195
+run $SC
+
+
