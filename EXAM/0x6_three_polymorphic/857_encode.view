@@ -1,0 +1,13 @@
+break *main+195
+run $SC
+stepi
+stepi
+stepi
+set $sc=$rbx
+x/118xb $sc
+break *shellcode+48
+step
+x/118xb $sc
+q
+
+
